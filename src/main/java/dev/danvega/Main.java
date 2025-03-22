@@ -10,12 +10,26 @@ public class Main {
     public static void main(String[] args) {
         List<BlogPost> posts = createSampleBlogPosts();
 
-        System.out.println("====== Before JDK 24: Nested Collectors ======");
-        nestedCollectors(posts);
+        postsByCategory(posts,"Java");
 
-        System.out.println("====== After JDK 24: Using Custom Stream Gatherer ======");
-        groupByWithLimit(posts);
+//        System.out.println("====== Before JDK 24: Nested Collectors ======");
+//        nestedCollectors(posts);
+//
+//        System.out.println("====== After JDK 24: Using Custom Stream Gatherer ======");
+//        groupByWithLimit(posts);
 
+    }
+
+    // Prior to JDK 24 :: Find All Posts By Category
+
+    public static void postsByCategory(List<BlogPost> posts,String category) {
+        List<BlogPost> postsByCategory = posts.stream()
+                .filter(p -> p.category().equals(category))
+                .sorted(Comparator.comparing(BlogPost::publishedDate).reversed())
+                .toList();
+
+        System.out.println("\nPosts by Category: " + category);
+        postsByCategory.forEach(System.out::println);
     }
 
     // Prior to JDK 24 :: How to Group By Category, order by publishedDate and limit by count
