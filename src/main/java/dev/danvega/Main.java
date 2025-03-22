@@ -3,7 +3,7 @@ package dev.danvega;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Gatherer;
+import java.util.stream.Gatherers;
 
 public class Main {
 
@@ -13,14 +13,14 @@ public class Main {
         System.out.println("====== Before JDK 24: Nested Collectors ======");
         nestedCollectors(posts);
 
-        System.out.println("====== Before JDK 24: Map Then Transform ======");
-        mapThenTransform(posts);
+        System.out.println("====== After JDK 24: Using Custom Stream Gatherer ======");
+        groupByWithLimit(posts);
 
-        System.out.println("====== After JDK 24: Using Stream Gatherer ======");
-        streamGatherer(posts);
     }
 
-    private static void nestedCollectors(List<BlogPost> posts) {
+    // Prior to JDK 24 :: How to Group By Category, order by publishedDate and limit by count
+
+    public static void nestedCollectors(List<BlogPost> posts) {
         // Group posts by category and limit each category to 3 most recent posts
         Map<String, List<BlogPost>> recentPostsByCategory = posts.stream()
                 // First, group all posts by category
@@ -40,7 +40,7 @@ public class Main {
         printRecentPostsByCategory(recentPostsByCategory);
     }
 
-    private static void mapThenTransform(List<BlogPost> posts) {
+    public static void mapThenTransform(List<BlogPost> posts) {
         Map<String, List<BlogPost>> recentPostsByCategory = posts.stream()
                 // Group by category
                 .collect(Collectors.groupingBy(BlogPost::category))
@@ -58,10 +58,12 @@ public class Main {
         printRecentPostsByCategory(recentPostsByCategory);
     }
 
-    private static void streamGatherer(List<BlogPost> posts) {
+    // After JDK 24 :: Custom Gatherers
+
+    public static void groupByWithLimit(List<BlogPost> posts) {
         // Use our custom gatherer to create a "Recent Posts By Category" view
         Map<String, List<BlogPost>> recentPostsByCategory = posts.stream()
-                .gather(groupByWithLimit(
+                .gather(BlogGatherers.groupByWithLimit(
                         BlogPost::category,    // Group by category
                         3,                     // Show only 3 recent posts per category
                         Comparator.comparing(BlogPost::publishedDate).reversed() // Newest first
@@ -71,45 +73,98 @@ public class Main {
         printRecentPostsByCategory(recentPostsByCategory);
     }
 
-    public static <T, K> Gatherer<T, Map<K, List<T>>, Map.Entry<K, List<T>>> groupByWithLimit(
-            java.util.function.Function<? super T, ? extends K> keyExtractor,
-            int limit,
-            Comparator<? super T> comparator) {
+    public static void relatedPosts(List<BlogPost> posts, int limit) {
+        // Get a target post for which we want to find related content
+        BlogPost targetPost = posts.getFirst();  // For example, using the 2nd posts which should have related posts
+        System.out.println("Finding posts related to: " + targetPost.title());
 
-        return Gatherer.of(
-                // Initialize with an empty map to store our grouped items
-                HashMap<K, List<T>>::new,
+        // Use the relatedPosts gatherer to find similar posts
+        List<BlogPost> relatedPosts = posts.stream()
+                .gather(BlogGatherers.relatedPosts(targetPost, limit))  // Use the provided limit parameter
+                .findFirst()  // The gatherer produces a single list of related posts
+                .orElse(List.of());  // Return empty list if no results
 
-                // Process each element
-                (map, element, downstream) -> {
-                    // Get the key for this element (e.g., the category)
-                    K key = keyExtractor.apply(element);
-
-                    // Add this element to its group (creating the group if needed)
-                    map.computeIfAbsent(key, k -> new ArrayList<>()).add(element);
-
-                    // Continue processing the stream
-                    return true;
-                },
-
-                // Combiner for parallel streams - just use the first map in this simple case
-                (map1, map2) -> map1,
-
-                // When all elements have been processed, emit the results
-                (map, downstream) -> {
-                    map.forEach((key, values) -> {
-                        // Sort the values and limit to the specified number
-                        List<T> limitedValues = values.stream()
-                                .sorted(comparator)
-                                .limit(limit)
-                                .toList();
-
-                        // Emit a Map.Entry with the key and limited values
-                        downstream.push(Map.entry(key, limitedValues));
-                    });
-                }
-        );
+        System.out.println("\nRelated posts:");
+        if (relatedPosts.isEmpty()) {
+            System.out.println("  No related posts found");
+        } else {
+            // Add this block to print related posts when found
+            relatedPosts.forEach(post ->
+                    System.out.println("  - " + post.title() + " (Category: " + post.category() + ")"));
+        }
     }
+
+    // After JDK 24 :: Gatherers (java.util.stream.Gatherers) that provide useful intermediate operations
+
+    public static void fixedWindowExample(List<BlogPost> posts) {
+        // Group posts into batches of 3
+        System.out.println("Posts in batches of 3:");
+        posts.stream()
+                .limit(9) // Limit to 9 posts for clarity
+                .gather(Gatherers.windowFixed(3))
+                .forEach(batch -> {
+                    System.out.println("\nBatch:");
+                    batch.forEach(post -> System.out.println("  - " + post.title()));
+                });
+    }
+
+    public static void slidingWindowExample(List<BlogPost> posts) {
+        // Show posts in sliding windows of size 2
+        System.out.println("Posts in sliding windows of size 2:");
+        posts.stream()
+                .limit(5) // Limit to 5 posts for clarity
+                .gather(Gatherers.windowSliding(2))
+                .forEach(window -> {
+                    System.out.println("\nWindow:");
+                    window.forEach(post -> System.out.println("  - " + post.title()));
+                });
+    }
+
+    public static void foldExample(List<BlogPost> posts) {
+        // Concatenate all blog post titles
+        posts.stream()
+                .limit(5) // Limit to 5 posts for clarity
+                .gather(Gatherers.fold(
+                        () -> "All titles: ",
+                        (result, post) -> result + post.title() + ", "
+                ))
+                .findFirst()
+                .ifPresent(System.out::println);
+    }
+
+    public static void scanExample(List<BlogPost> posts) {
+        // Build a progressive summary of post titles
+        System.out.println("Progressive title concatenation:");
+        posts.stream()
+                .limit(5) // Limit to 5 posts for clarity
+                .gather(Gatherers.scan(
+                        () -> "Titles so far: ",
+                        (result, post) -> result + post.title() + ", "
+                ))
+                .forEach(System.out::println);
+    }
+
+    public static void mapConcurrentExample(List<BlogPost> posts) {
+        // Process posts concurrently to calculate title lengths
+        System.out.println("Title lengths (processed concurrently):");
+        posts.stream()
+                .limit(10) // Limit to 10 posts for clarity
+                .gather(Gatherers.mapConcurrent(
+                        4, // 4 concurrent operations
+                        post -> {
+                            // Simulate some time-consuming processing
+                            try {
+                                Thread.sleep(100);
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                            }
+                            return Map.entry(post.title(), post.title().length());
+                        }
+                ))
+                .forEach(entry -> System.out.println(entry.getKey() + ": " + entry.getValue() + " chars"));
+    }
+
+    // Helper Functions for this Main Class
 
     private static void printRecentPostsByCategory(Map<String, List<BlogPost>> recentPostsByCategory){
         System.out.println("Recent Posts By Category:");
@@ -408,7 +463,25 @@ public class Main {
                         "Thomas Harris",
                         "Strategies for implementing security in distributed microservices-based systems.",
                         "Security",
-                        LocalDateTime.of(2025, 3, 2, 15, 15))
+                        LocalDateTime.of(2025, 3, 2, 15, 15)),
+
+                new BlogPost(
+                        36L,
+                        "Stream Gatherers: A Complete Tutorial",
+                        "John Doe",
+                        "This comprehensive tutorial walks through all aspects of Stream Gatherers in JDK 24 with practical examples.",
+                        "Java",
+                        LocalDateTime.of(2025, 3, 19, 9, 30)),
+
+                new BlogPost(
+                        37L,
+                        "Comparing Stream Collectors and Gatherers",
+                        "Sarah Williams",
+                        "Learn how Stream Gatherers in JDK 24 improve upon the existing Collectors API with examples of both approaches.",
+                        "Java",
+                        LocalDateTime.of(2025, 3, 16, 14, 15))
         );
     }
+
+
 }
