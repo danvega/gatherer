@@ -74,13 +74,10 @@ public class Main {
     }
 
     public static void relatedPosts(List<BlogPost> posts, int limit) {
-        // Get a target post for which we want to find related content
-        BlogPost targetPost = posts.getFirst();  // For example, using the 2nd posts which should have related posts
+        BlogPost targetPost = posts.getFirst();
         System.out.println("Finding posts related to: " + targetPost.title());
-
-        // Use the relatedPosts gatherer to find similar posts
         List<BlogPost> relatedPosts = posts.stream()
-                .gather(BlogGatherers.relatedPosts(targetPost, limit))  // Use the provided limit parameter
+                .gather(BlogGatherers.relatedPosts(targetPost, limit))
                 .findFirst()  // The gatherer produces a single list of related posts
                 .orElse(List.of());  // Return empty list if no results
 
