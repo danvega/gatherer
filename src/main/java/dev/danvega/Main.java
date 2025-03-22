@@ -10,13 +10,14 @@ public class Main {
     public static void main(String[] args) {
         List<BlogPost> posts = createSampleBlogPosts();
 
+        System.out.println("====== Find All Posts by Category ======");
         postsByCategory(posts,"Java");
 
-//        System.out.println("====== Before JDK 24: Nested Collectors ======");
-//        nestedCollectors(posts);
-//
-//        System.out.println("====== After JDK 24: Using Custom Stream Gatherer ======");
-//        groupByWithLimit(posts);
+        System.out.println("====== Before JDK 24: Nested Collectors ======");
+        nestedCollectors(posts);
+
+        System.out.println("====== After JDK 24: Using Custom Stream Gatherer ======");
+        groupByWithLimit(posts);
 
     }
 
