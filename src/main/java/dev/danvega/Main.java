@@ -27,16 +27,16 @@ public class Main {
         List<BlogPost> postsByCategory = posts.stream()
                 .filter(p -> p.category().equals(category))
                 .sorted(Comparator.comparing(BlogPost::publishedDate).reversed())
+                .limit(3)
                 .toList();
 
         System.out.println("\nPosts by Category: " + category);
         postsByCategory.forEach(System.out::println);
     }
 
-    // Prior to JDK 24 :: How to Group By Category, order by publishedDate and limit by count
+    // Prior to JDK 24 :: How to Group By Category, order by publishedDate and limit to 3 most recent posts
 
     public static void nestedCollectors(List<BlogPost> posts) {
-        // Group posts by category and limit each category to 3 most recent posts
         Map<String, List<BlogPost>> recentPostsByCategory = posts.stream()
                 // First, group all posts by category
                 .collect(Collectors.groupingBy(
@@ -48,7 +48,7 @@ public class Main {
                                 categoryPosts -> categoryPosts.stream()
                                         .sorted(Comparator.comparing(BlogPost::publishedDate).reversed())
                                         .limit(3)
-                                        .collect(Collectors.toList())
+                                        .toList()
                         )
                 ));
 

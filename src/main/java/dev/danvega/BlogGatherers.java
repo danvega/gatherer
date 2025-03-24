@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.*;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Gatherer;
@@ -27,7 +28,7 @@ public final class BlogGatherers {
      * @return a gatherer that produces map entries with keys and limited lists of posts
      */
     public static <K> Gatherer<BlogPost, Map<K, List<BlogPost>>, Map.Entry<K, List<BlogPost>>> groupByWithLimit(
-            java.util.function.Function<? super BlogPost, ? extends K> keyExtractor,
+            Function<? super BlogPost, ? extends K> keyExtractor,
             int limit,
             Comparator<? super BlogPost> comparator) {
 
